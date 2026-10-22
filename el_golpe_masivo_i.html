@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EL GOLPE MASIVO I - GTA Board Game Manager</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        orbitron: ['Orbitron', 'sans-serif'],
+                        rajdhani: ['Rajdhani', 'sans-serif']
+                    },
+                    colors: {
+                        crime: {
+                            red: '#ff0055',
+                            purple: '#7928ca',
+                            cyan: '#00dfd8',
+                            gold: '#ffb703',
+                            dark: '#0a0a12',
+                            card: '#121220'
+                        }
+                    },
+                    boxShadow: {
+                        'neon-red': '0 0 15px rgba(255, 0, 85, 0.5)',
+                        'neon-cyan': '0 0 15px rgba(0, 223, 216, 0.5)',
+                        'neon-gold': '0 0 20px rgba(255, 183, 3, 0.6)'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background-color: #06060c;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(121, 40, 202, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(255, 0, 85, 0.15) 0%, transparent 40%),
+                linear-gradient(to bottom, rgba(0,0,0,0.8), rgba(6,6,12,0.95));
+            background-attachment: fixed;
+        }
+
+        .ruleta-spin {
+            transition: transform 4s cubic-bezier(0.15, 0.9, 0.2, 1);
+        }
+
+        /* Glassmorphism card */
+        .glass-card {
+            background: rgba(18, 18, 32, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .glass-modal {
+            background: rgba(10, 10, 18, 0.92);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 223, 216, 0.3);
+        }
+
+        /* Glow animation */
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 15px rgba(0, 223, 216, 0.4); }
+            50% { box-shadow: 0 0 25px rgba(0, 223, 216, 0.8); }
+        }
+
+        .pulse-glow {
+            animation: pulseGlow 2s infinite;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between text-slate-100 overflow-x-hidden relative">
+
+    <!-- HEADER DE LA APLICACIÓN Y BOTÓN DE MARCADOR GLOBAL -->
+    <header class="p-4 md:p-6 flex justify-between items-center border-b border-slate-800/80 bg-slate-950/60 backdrop-blur-md sticky top-0 z-30">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-crime-red to-crime-purple flex items-center justify-center text-white text-xl shadow-neon-red font-bold">
+                <i class="fa-solid fa-crown"></i>
+            </div>
+            <div>
+                <h1 class="font-orbitron font-extrabold text-xl md:text-2xl tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-crime-cyan via-white to-crime-red uppercase">
+                    EL GOLPE MASIVO I
+                </h1>
+                <p class="text-xs text-slate-400 font-medium tracking-widest uppercase">con esto te vacuno</p>
+            </div>
+        </div>
+
+        <!-- Botón de Marcador MUY VISIBLE en la esquina superior derecha -->
+        <button onclick="toggleLeaderboardModal(true)" class="pulse-glow relative group flex items-center gap-3 px-5 py-2.5 rounded-xl bg-gradient-to-r from-crime-cyan to-blue-600 font-orbitron font-bold text-slate-950 hover:text-white transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-neon-cyan">
+            <i class="fa-solid fa-trophy text-lg group-hover:rotate-12 transition-transform"></i>
+            <span class="tracking-wider uppercase text-sm hidden sm:inline">MARCADOR</span>
+            <span class="tracking-wider uppercase text-sm sm:hidden">RANK</span>
+        </button>
+    </header>
+
+    <!-- CONTENIDO PRINCIPAL / GRID RESTRUCTURABLE DE TARJETAS -->
+    <main class="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto flex flex-col justify-between">
+        
+        <!-- BARRA SUPERIOR DE ACCIÓN / ESTADO -->
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+            <div id="gameStatus" class="flex items-center gap-2 text-slate-400 text-sm font-semibold uppercase tracking-wider">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+                <span>Fase: <strong id="phaseText" class="text-crime-cyan">Configuración de Jugadores</strong></span>
+            </div>
+
+            <!-- Botón Start Principal -->
+            <button id="btnStartGame" onclick="iniciarRuletaDeRoles()" class="w-full md:w-auto px-8 py-3 rounded-xl font-orbitron font-black text-lg text-slate-950 bg-gradient-to-r from-emerald-400 via-teal-300 to-crime-cyan hover:shadow-neon-cyan transition-all transform hover:-translate-y-0.5 active:translate-y-0 uppercase tracking-widest disabled:opacity-40 disabled:pointer-events-none">
+                <i class="fa-solid fa-play mr-2"></i> Iniciar Golpe (Ruleta)
+            </button>
+        </div>
+
+        <!-- GRID DINÁMICO DE TARJETAS -->
+        <div id="cardsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 w-full items-stretch">
+            <!-- Las tarjetas se generan dinámicamente con JavaScript -->
+        </div>
+
+    </main>
+
+    <!-- FOOTER MODERNO -->
+    <footer class="p-4 text-center text-xs text-slate-500 border-t border-slate-900 bg-slate-950/80">
+        <p>© 2026 EL GOLPE MASIVO I • Creado para partidas con amigos estilo GTA</p>
+    </footer>
+
+    <!-- ==================== MODALES & POP-UPS ==================== -->
+
+    <!-- 1. POPUP / MODAL MARCADOR DE DINERO Y RANKING -->
+    <div id="modalLeaderboard" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-modal w-full max-w-lg rounded-2xl p-6 relative shadow-2xl border border-crime-cyan/40 transform transition-all">
+            <button onclick="toggleLeaderboardModal(false)" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="text-center mb-6">
+                <div class="w-14 h-14 rounded-2xl bg-crime-cyan/10 border border-crime-cyan text-crime-cyan mx-auto flex items-center justify-center text-2xl mb-2 shadow-neon-cyan">
+                    <i class="fa-solid fa-chart-line"></i>
+                </div>
+                <h2 class="font-orbitron text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-crime-cyan to-white uppercase">
+                    Marcador Global
+                </h2>
+                <p class="text-xs text-slate-400">Ranking en tiempo real por Capital Acumulado</p>
+            </div>
+
+            <!-- Lista de ranking -->
+            <div id="leaderboardList" class="space-y-3 max-h-80 overflow-y-auto pr-1">
+                <!-- Se rellena por JS -->
+            </div>
+
+            <button onclick="toggleLeaderboardModal(false)" class="mt-6 w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 font-bold text-sm tracking-wider uppercase transition-colors">
+                Cerrar Marcador
+            </button>
+        </div>
+    </div>
+
+    <!-- 2. POPUP / MODAL RULETA DE ASIGNACIÓN DE ROLES -->
+    <div id="modalRuleta" class="fixed inset-0 bg-black/90 backdrop-blur-lg z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-modal w-full max-w-xl rounded-3xl p-6 md:p-8 relative text-center border border-crime-purple/60 shadow-2xl">
+            <h2 class="font-orbitron text-2xl md:text-3xl font-black text-white uppercase tracking-wider mb-1">
+                Asignación de Roles
+            </h2>
+            <p id="ruletaSubtitle" class="text-slate-400 text-sm mb-6">Sorteando el destino criminal para cada jugador...</p>
+
+            <!-- Display de la Ruleta -->
+            <div class="relative w-full h-48 bg-slate-950/80 rounded-2xl border-2 border-crime-purple/40 overflow-hidden flex items-center justify-center my-4 shadow-inner">
+                <!-- Indicador Central -->
+                <div class="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-1 bg-crime-cyan z-20 shadow-neon-cyan"></div>
+                <div class="absolute top-2 left-1/2 -translate-x-1/2 z-20 text-crime-cyan text-xl">
+                    <i class="fa-solid fa-caret-down"></i>
+                </div>
+
+                <!-- Carrusel / Ruleta animada -->
+            <div id="ruletaTrack" class="flex gap-4 items-center absolute left-0 transition-transform duration-300">
+                <!-- Rellenado dinámico -->
+            </div>
+        </div>
+
+        <div id="ruletaResultBox" class="min-h-[60px] flex flex-col items-center justify-center my-3">
+            <span id="ruletaPlayerName" class="font-orbitron font-bold text-lg text-crime-cyan">---</span>
+            <span id="ruletaRoleAssigned" class="font-semibold text-slate-300 text-sm">Preparando ruleta...</span>
+        </div>
+
+        <button id="btnNextSpin" onclick="siguienteGiroRuleta()" class="w-full py-3.5 rounded-xl font-orbitron font-extrabold text-slate-950 bg-gradient-to-r from-crime-cyan to-blue-500 hover:shadow-neon-cyan transition-all uppercase tracking-wider hidden">
+            Continuar
+        </button>
+    </div>
+</div>
+            </div>
+
+            <div id="ruletaResultBox" class="min-h-[60px] flex flex-col items-center justify-center my-3">
+                <span id="ruletaPlayerName" class="font-orbitron font-bold text-lg text-crime-cyan">---</span>
+                <span id="ruletaRoleAssigned" class="font-semibold text-slate-300 text-sm">Preparando ruleta...</span>
+            </div>
+
+            <button id="btnNextSpin" onclick="siguienteGiroRuleta()" class="w-full py-3.5 rounded-xl font-orbitron font-extrabold text-slate-950 bg-gradient-to-r from-crime-cyan to-blue-500 hover:shadow-neon-cyan transition-all uppercase tracking-wider hidden">
+                Continuar
+            </button>
+        </div>
+    </div>
+
+    <!-- 3. POPUP / MODAL SUMAR O RESTAR DINERO -->
+    <div id="modalMoney" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-modal w-full max-w-md rounded-2xl p-6 relative border border-slate-700 shadow-2xl">
+            <button onclick="toggleMoneyModal(false)" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="text-center mb-5">
+                <div id="moneyModalIcon" class="w-12 h-12 rounded-xl mx-auto flex items-center justify-center text-xl mb-2">
+                    <i class="fa-solid fa-wallet"></i>
+                </div>
+                <h3 id="moneyModalTitle" class="font-orbitron text-xl font-bold uppercase">Ajustar Capital</h3>
+                <p id="moneyModalPlayer" class="text-xs text-slate-400">Jugador: ---</p>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1">Monto de la Transacción ($)</label>
+                    <input type="number" id="moneyAmountInput" placeholder="Ej. 50000" min="1" step="1000" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white font-orbitron text-lg focus:outline-none focus:border-crime-cyan">
+                </div>
+
+                <!-- Botones Rápidos -->
+                <div class="grid grid-cols-4 gap-2">
+                    <button onclick="setQuickAmount(1000)" class="py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-semibold">+1K</button>
+                    <button onclick="setQuickAmount(5000)" class="py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-semibold">+5K</button>
+                    <button onclick="setQuickAmount(10000)" class="py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-semibold">+10K</button>
+                    <button onclick="setQuickAmount(50000)" class="py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-semibold">+50K</button>
+                </div>
+
+                <button id="btnConfirmMoney" onclick="confirmarTransaccion()" class="w-full py-3 rounded-xl font-orbitron font-bold text-slate-950 uppercase tracking-wider transition-all">
+                    Confirmar Transacción
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. POPUP / MODAL MENÚ OPCIONES TRES PUNTOS DE LA TARJETA -->
+    <div id="modalCardOptions" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-modal w-full max-w-xs rounded-2xl p-5 relative border border-slate-700 shadow-2xl">
+            <h4 class="font-orbitron text-sm font-bold uppercase text-slate-400 mb-4 text-center">Opciones de Tarjeta</h4>
+            <div class="space-y-2">
+                <button onclick="eliminarTarjetaSeleccionada()" class="w-full py-2.5 px-4 rounded-xl bg-crime-red/20 border border-crime-red/50 hover:bg-crime-red text-white text-sm font-semibold flex items-center justify-center gap-2 transition-all">
+                    <i class="fa-solid fa-trash-can"></i> Borrar esta tarjeta
+                </button>
+                <button onclick="toggleCardOptionsModal(false)" class="w-full py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. POPUP / MODAL DE GANADOR FINAL -->
+    <div id="modalWinner" class="fixed inset-0 bg-black/90 backdrop-blur-xl z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-modal w-full max-w-md rounded-3xl p-8 relative text-center border-2 border-crime-gold shadow-neon-gold">
+            <div class="w-20 h-20 rounded-full bg-gradient-to-tr from-crime-gold to-yellow-200 text-slate-950 mx-auto flex items-center justify-center text-4xl mb-4 shadow-neon-gold animate-bounce">
+                <i class="fa-solid fa-trophy"></i>
+            </div>
+            <h2 class="font-orbitron text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-crime-gold via-white to-yellow-500 uppercase tracking-widest mb-1">
+                ¡REY DEL IMPERIO!
+            </h2>
+            <p class="text-xs text-slate-400 uppercase tracking-wider mb-6">Unico criminal sobreviviente con capital activo</p>
+
+            <div class="bg-slate-950/80 rounded-2xl p-5 border border-slate-800 mb-6">
+                <div id="winnerRoleIcon" class="text-3xl text-crime-cyan mb-2"><i class="fa-solid fa-user-ninja"></i></div>
+                <h3 id="winnerName" class="font-orbitron font-extrabold text-2xl text-white mb-1">---</h3>
+                <p id="winnerRoleName" class="text-xs text-crime-cyan font-bold tracking-widest uppercase mb-3">---</p>
+                <div class="text-xs text-slate-400">Capital Final: <span id="winnerCapital" class="font-orbitron text-emerald-400 text-lg font-bold block">$0</span></div>
+            </div>
+
+            <button onclick="reiniciarJuego()" class="w-full py-3.5 rounded-xl font-orbitron font-black text-slate-950 bg-gradient-to-r from-crime-gold to-yellow-400 hover:shadow-neon-gold transition-all uppercase tracking-wider">
+                <i class="fa-solid fa-rotate-right mr-2"></i> Nueva Partida
+            </button>
+        </div>
+    </div>
+
+
+    <!-- JAVASCRIPT LÓGICA COMPLETA DEL JUEGO -->
+    <script>
+        // ROLES DISPONIBLES EN EL JUEGO CON SUS ICONOS Y COLORES
+        const ROLES_CRIMINALES = [
+            { id: 'narcotraficante', nombre: 'Narcotraficante', icono: 'fa-capsules', color: '#ff0055' },
+            { id: 'asesino', nombre: 'Asesino a Sueldo', icono: 'fa-crosshairs', color: '#7928ca' },
+            { id: 'mafioso', nombre: 'Don Mafioso', icono: 'fa-user-tie', color: '#ffb703' },
+            { id: 'hacker', nombre: 'Ciber Hacker', icono: 'fa-laptop-code', color: '#00dfd8' },
+            { id: 'contrabandista', nombre: 'Contrabandista', icono: 'fa-box-open', color: '#10b981' }
+        ];
+
+        // ESTADO GLOBAL DE LA APLICACIÓN
+        let jugadores = [];
+        let juegoIniciado = false;
+        let tarjetaSeleccionadaId = null;
+        let tipoTransaccion = 'sumar'; // 'sumar' o 'restar'
+        let ruletaQueue = [];
+        let ruletaCurrentIndex = 0;
+
+        // INICIALIZACIÓN
+        window.onload = function () {
+            // Cargar 3 tarjetas por defecto para empezar rápido
+            agregarJugador('Jugador 1', 100000);
+            agregarJugador('Jugador 2', 100000);
+            agregarJugador('Jugador 3', 100000);
+            renderizarTarjetas();
+        };
+
+        // GESTIÓN DE JUGADORES / TARJETAS
+        function agregarJugador(nombre = '', capital = 100000) {
+            if (jugadores.length >= 10) return;
+            const nuevoJugador = {
+                id: 'player_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+                nombre: nombre,
+                capital: capital,
+                rol: null,
+                arruinado: false
+            };
+            jugadores.push(nuevoJugador);
+            renderizarTarjetas();
+        }
+
+        function eliminarJugador(id) {
+            if (juegoIniciado) return;
+            jugadores = jugadores.filter(j => j.id !== id);
+            renderizarTarjetas();
+        }
+
+        function actualizarDatosJugador(id, campo, valor) {
+            const j = jugadores.find(item => item.id === id);
+            if (j) {
+                if (campo === 'capital') {
+                    j.capital = Math.max(0, parseInt(valor) || 0);
+                } else if (campo === 'nombre') {
+                    j.nombre = valor;
+                }
+            }
+        }
+
+        // RENDERIZADO RESTRUCTURADO DE TARJETAS EN PANTALLA
+        function renderizarTarjetas() {
+            const container = document.getElementById('cardsGrid');
+            container.innerHTML = '';
+
+            jugadores.forEach((jugador, index) => {
+                const card = document.createElement('div');
+                card.className = `glass-card rounded-2xl p-5 flex flex-col justify-between relative transition-all duration-300 border ${jugador.arruinado ? 'border-crime-red/60 bg-crime-red/10 opacity-60' : 'border-slate-800 hover:border-slate-700'}`;
+
+                let htmlContent = `
+                    <!-- Tres Puntos arriba derecha -->
+                    ${!juegoIniciado ? `
+                        <button onclick="abrirOpcionesTarjeta('${jugador.id}')" class="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800/60 transition-colors">
+                            <i class="fa-solid fa-ellipsis-vertical text-lg"></i>
+                        </button>
+                    ` : ''}
+
+                    <div>
+                        <!-- Rol Badge if assigned -->
+                        ${jugador.rol ? `
+                            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-700 text-xs font-bold mb-3" style="color: ${jugador.rol.color}">
+                                <i class="fa-solid ${jugador.rol.icono}"></i>
+                                <span class="uppercase font-orbitron">${jugador.rol.nombre}</span>
+                            </div>
+                        ` : `
+                            <span class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-3 font-orbitron">Tarjeta #${index + 1}</span>
+                        `}
+
+                        <!-- Nombre -->
+                        ${!juegoIniciado ? `
+                            <div class="mb-3 pr-6">
+                                <label class="block text-[10px] uppercase tracking-wider text-slate-400 mb-1">Nombre Alias</label>
+                                <input type="text" value="${jugador.nombre}" placeholder="Introduce Nombre" oninput="actualizarDatosJugador('${jugador.id}', 'nombre', this.value)" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-white font-semibold text-sm focus:outline-none focus:border-crime-cyan">
+                            </div>
+                        ` : `
+                            <h3 class="font-orbitron font-extrabold text-xl text-white mb-2 truncate">${jugador.nombre || 'Sin Nombre'}</h3>
+                        `}
+
+                        <!-- Capital Display -->
+                        <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800/80 mb-4">
+                            <span class="text-[10px] uppercase tracking-wider text-slate-400 block mb-0.5">Capital Disponible</span>
+                            ${!juegoIniciado ? `
+                                <div class="flex items-center">
+                                    <span class="text-emerald-400 font-orbitron font-bold text-lg mr-1">$</span>
+                                    <input type="number" value="${jugador.capital}" oninput="actualizarDatosJugador('${jugador.id}', 'capital', this.value)" class="w-full bg-transparent font-orbitron font-bold text-lg text-emerald-400 focus:outline-none">
+                                </div>
+                            ` : `
+                                <span class="font-orbitron font-extrabold text-2xl ${jugador.capital > 0 ? 'text-emerald-400' : 'text-crime-red'}">
+                                    $${jugador.capital.toLocaleString()}
+                                </span>
+                            `}
+                        </div>
+                    </div>
+                `;
+
+                // Botones +/- habilitados en juego
+                if (juegoIniciado && !jugador.arruinado) {
+                    htmlContent += `
+                        <div class="grid grid-cols-2 gap-3 mt-2">
+                            <button onclick="abrirModalDinero('${jugador.id}', 'restar')" class="py-2.5 rounded-xl bg-crime-red/20 border border-crime-red/50 hover:bg-crime-red text-white font-orbitron font-bold text-lg transition-all flex items-center justify-center hover:shadow-neon-red">
+                                <i class="fa-solid fa-minus"></i>
+                            </button>
+                            <button onclick="abrirModalDinero('${jugador.id}', 'sumar')" class="py-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/50 hover:bg-emerald-500 text-white font-orbitron font-bold text-lg transition-all flex items-center justify-center shadow-sm">
+                                <i class="fa-solid fa-plus"></i>
+                            </button>
+                        </div>
+                    `;
+                }
+
+                // Banner de Arruinado
+                if (jugador.arruinado) {
+                    htmlContent += `
+                        <div class="mt-2 py-2 rounded-xl bg-crime-red text-white font-orbitron font-black text-center text-xs tracking-widest uppercase shadow-neon-red">
+                            <i class="fa-solid fa-skull mr-1"></i> ARRUINADO / ELIMINADO
+                        </div>
+                    `;
+                }
+
+                card.innerHTML = htmlContent;
+                container.appendChild(card);
+            });
+
+            // TARJETA DE BOTÓN DE AÑADIR (+) SI HAY MENOS DE 10 JUGADORES Y NO HA EMPEZADO
+            if (!juegoIniciado && jugadores.length < 10) {
+                const addCard = document.createElement('div');
+                addCard.onclick = () => agregarJugador(`Jugador ${jugadores.length + 1}`, 100000);
+                addCard.className = 'border-2 border-dashed border-slate-800 hover:border-crime-cyan rounded-2xl p-6 flex flex-col items-center justify-center min-h-[220px] cursor-pointer group transition-all duration-300 bg-slate-950/30 hover:bg-slate-900/40';
+                addCard.innerHTML = `
+                    <div class="w-14 h-14 rounded-full bg-slate-900 border border-slate-700 group-hover:border-crime-cyan group-hover:bg-crime-cyan/10 flex items-center justify-center text-slate-400 group-hover:text-crime-cyan text-2xl transition-all mb-3 group-hover:scale-110">
+                        <i class="fa-solid fa-plus"></i>
+                    </div>
+                    <span class="font-orbitron font-bold text-sm text-slate-400 group-hover:text-white transition-colors">AÑADIR JUGADOR</span>
+                    <span class="text-xs text-slate-600 mt-1">(${jugadores.length}/10)</span>
+                `;
+                container.appendChild(addCard);
+            }
+
+            // Deshabilitar botón Start si no hay jugadores suficientes
+            const btnStart = document.getElementById('btnStartGame');
+            if (btnStart) {
+                btnStart.disabled = jugadores.length < 1 || jugadores.some(j => !j.nombre.trim());
+            }
+        }
+
+        // MODAL MARCADOR GLOBAL / LEADERBOARD
+        function toggleLeaderboardModal(show) {
+            const modal = document.getElementById('modalLeaderboard');
+            if (show) {
+                actualizarMarcadorUI();
+                modal.classList.remove('hidden');
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function actualizarMarcadorUI() {
+            const list = document.getElementById('leaderboardList');
+            list.innerHTML = '';
+
+            // Ordenar de mayor a menor capital
+            const ranking = [...jugadores].sort((a, b) => b.capital - a.capital);
+
+            if (ranking.length === 0) {
+                list.innerHTML = `<p class="text-center text-slate-500 py-4">No hay jugadores registrados.</p>`;
+                return;
+            }
+
+            ranking.forEach((player, index) => {
+                const item = document.createElement('div');
+                item.className = `flex items-center justify-between p-3.5 rounded-xl border ${player.arruinado ? 'bg-crime-red/10 border-crime-red/30 text-slate-400' : 'bg-slate-900/80 border-slate-800'}`;
+
+                let rankBadge = `<span class="w-6 text-center font-orbitron font-bold text-slate-500">${index + 1}</span>`;
+                if (index === 0) rankBadge = `<span class="w-6 text-center text-crime-gold text-lg"><i class="fa-solid fa-trophy"></i></span>`;
+                if (index === 1) rankBadge = `<span class="w-6 text-center text-slate-300 text-lg"><i class="fa-solid fa-medal"></i></span>`;
+                if (index === 2) rankBadge = `<span class="w-6 text-center text-amber-600 text-lg"><i class="fa-solid fa-award"></i></span>`;
+
+                item.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        ${rankBadge}
+                        <div>
+                            <div class="font-orbitron font-bold text-sm text-white">${player.nombre || 'Sin Nombre'}</div>
+                            <div class="text-[10px] text-slate-400 uppercase tracking-wider">${player.rol ? player.rol.nombre : 'Sin Rol'}</div>
+                        </div>
+                    </div>
+                    <div class="font-orbitron font-extrabold text-sm ${player.capital > 0 ? 'text-emerald-400' : 'text-crime-red'}">
+                        $${player.capital.toLocaleString()}
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        // MENÚ OPCIONES TRES PUNTOS
+        function abrirOpcionesTarjeta(id) {
+            tarjetaSeleccionadaId = id;
+            document.getElementById('modalCardOptions').classList.remove('hidden');
+        }
+
+        function toggleCardOptionsModal(show) {
+            const modal = document.getElementById('modalCardOptions');
+            if (show) modal.classList.remove('hidden');
+            else modal.classList.add('hidden');
+        }
+
+        function eliminarTarjetaSeleccionada() {
+            if (tarjetaSeleccionadaId) {
+                eliminarJugador(tarjetaSeleccionadaId);
+                tarjetaSeleccionadaId = null;
+                toggleCardOptionsModal(false);
+            }
+        }
+
+        // FASE RULETA DE ROLES
+        function iniciarRuletaDeRoles() {
+            if (jugadores.length === 0) return;
+            
+            juegoIniciado = true;
+            document.getElementById('phaseText').innerText = 'Juego en Curso / EL GOLPE MASIVO I';
+            document.getElementById('btnStartGame').classList.add('hidden');
+
+            ruletaQueue = [...jugadores];
+            ruletaCurrentIndex = 0;
+
+            document.getElementById('modalRuleta').classList.remove('hidden');
+            siguienteGiroRuleta();
+        }
+
+        function siguienteGiroRuleta() {
+            if (ruletaCurrentIndex >= ruletaQueue.length) {
+                // Finalizó sorteo para todos
+                document.getElementById('modalRuleta').classList.add('hidden');
+                renderizarTarjetas();
+                return;
+            }
+
+            const btnNext = document.getElementById('btnNextSpin');
+            btnNext.classList.add('hidden');
+
+            const jugador = ruletaQueue[ruletaCurrentIndex];
+            document.getElementById('ruletaPlayerName').innerText = jugador.nombre.toUpperCase();
+            document.getElementById('ruletaRoleAssigned').innerText = 'Girando ruleta...';
+            document.getElementById('ruletaRoleAssigned').style.color = '#cbd5e1';
+
+            const track = document.getElementById('ruletaTrack');
+            track.innerHTML = '';
+            track.style.transition = 'none';
+            track.style.transform = 'translateX(0px)';
+
+            // Elegir el rol ganador ANTES del giro
+            const rolFinal = ROLES_CRIMINALES[Math.floor(Math.random() * ROLES_CRIMINALES.length)];
+            jugador.rol = rolFinal;
+
+            // Construir la lista de elementos para la ruleta
+            // Generamos una secuencia de roles y fijamos exactamente el ítem en el índice de parada
+            const TARGET_INDEX = 24; 
+            let items = [];
+            for (let i = 0; i < TARGET_INDEX + 5; i++) {
+                if (i === TARGET_INDEX) {
+                    items.push(rolFinal);
+                } else {
+                    const randomRol = ROLES_CRIMINALES[Math.floor(Math.random() * ROLES_CRIMINALES.length)];
+                    items.push(randomRol);
+                }
+            }
+
+            // Ancho de tarjeta + margen (w-32 = 128px + gap 16px = 144px)
+            const itemWidth = 144; 
+
+            // Renderizar tarjetas en el track
+            items.forEach((rol) => {
+                const box = document.createElement('div');
+                box.className = 'w-32 h-32 flex-shrink-0 bg-slate-900 border border-slate-700 rounded-2xl flex flex-col items-center justify-center gap-2 p-2';
+                box.innerHTML = `
+                    <i class="fa-solid ${rol.icono} text-3xl" style="color: ${rol.color}"></i>
+                    <span class="font-orbitron font-bold text-xs uppercase text-slate-300 text-center leading-tight">${rol.nombre}</span>
+                `;
+                track.appendChild(box);
+            });
+
+            // Calcular el desplazamiento exacto para centrar la tarjeta ganadora bajo la aguja
+            // El contenedor padre mide aprox 100% de la modal, calculamos la mitad del contenedor visible
+            const containerWidth = document.getElementById('ruletaTrack').parentElement.clientWidth;
+            const targetOffset = (containerWidth / 2) - (TARGET_INDEX * itemWidth + 64);
+
+            // Disparar la animación con precisión matemática
+            setTimeout(() => {
+                track.style.transition = 'transform 3.8s cubic-bezier(0.1, 0.9, 0.15, 1)';
+                track.style.transform = `translateX(${targetOffset}px)`;
+            }, 100);
+
+            // Mostrar el resultado alineado al finalizar la animación
+            setTimeout(() => {
+                document.getElementById('ruletaRoleAssigned').innerText = `¡Asignado: ${rolFinal.nombre}!`;
+                document.getElementById('ruletaRoleAssigned').style.color = rolFinal.color;
+                
+                ruletaCurrentIndex++;
+                btnNext.innerText = ruletaCurrentIndex < ruletaQueue.length ? 'Siguiente Jugador' : 'Comenzar Partida';
+                btnNext.classList.remove('hidden');
+            }, 4000);
+        }
+
+        // MODAL SUMAR / RESTAR CAPITAL
+        function abrirModalDinero(id, tipo) {
+            tarjetaSeleccionadaId = id;
+            tipoTransaccion = tipo;
+
+            const jugador = jugadores.find(j => j.id === id);
+            if (!jugador) return;
+
+            document.getElementById('moneyAmountInput').value = '';
+            document.getElementById('moneyModalPlayer').innerText = `Jugador: ${jugador.nombre}`;
+
+            const iconBox = document.getElementById('moneyModalIcon');
+            const title = document.getElementById('moneyModalTitle');
+            const btnConfirm = document.getElementById('btnConfirmMoney');
+
+            if (tipo === 'sumar') {
+                title.innerText = 'Añadir Dinero';
+                title.className = 'font-orbitron text-xl font-bold uppercase text-emerald-400';
+                iconBox.className = 'w-12 h-12 rounded-xl mx-auto flex items-center justify-center text-xl mb-2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40';
+                btnConfirm.className = 'w-full py-3 rounded-xl font-orbitron font-bold text-slate-950 uppercase tracking-wider bg-emerald-400 hover:bg-emerald-300 transition-all';
+            } else {
+                title.innerText = 'Quitar Dinero';
+                title.className = 'font-orbitron text-xl font-bold uppercase text-crime-red';
+                iconBox.className = 'w-12 h-12 rounded-xl mx-auto flex items-center justify-center text-xl mb-2 bg-crime-red/20 text-crime-red border border-crime-red/40';
+                btnConfirm.className = 'w-full py-3 rounded-xl font-orbitron font-bold text-white uppercase tracking-wider bg-crime-red hover:bg-rose-600 transition-all';
+            }
+
+            document.getElementById('modalMoney').classList.remove('hidden');
+        }
+
+        function toggleMoneyModal(show) {
+            const modal = document.getElementById('modalMoney');
+            if (show) modal.classList.remove('hidden');
+            else modal.classList.add('hidden');
+        }
+
+        function setQuickAmount(amount) {
+            document.getElementById('moneyAmountInput').value = amount;
+        }
+
+        function confirmarTransaccion() {
+            const monto = parseInt(document.getElementById('moneyAmountInput').value) || 0;
+            if (monto <= 0) return;
+
+            const jugador = jugadores.find(j => j.id === tarjetaSeleccionadaId);
+            if (jugador) {
+                if (tipoTransaccion === 'sumar') {
+                    jugador.capital += monto;
+                } else {
+                    jugador.capital -= monto;
+                    if (jugador.capital <= 0) {
+                        jugador.capital = 0;
+                        jugador.arruinado = true;
+                    }
+                }
+            }
+
+            toggleMoneyModal(false);
+            renderizarTarjetas();
+            verificarGanador();
+        }
+
+        // VERIFICAR CONDICIÓN DE VICTORIA
+        function verificarGanador() {
+            if (!juegoIniciado) return;
+
+            const activos = jugadores.filter(j => !j.arruinado);
+            if (activos.length === 1 && jugadores.length > 1) {
+                const ganador = activos[0];
+                mostrarGanador(ganador);
+            }
+        }
+
+        function mostrarGanador(ganador) {
+            document.getElementById('winnerName').innerText = ganador.nombre;
+            document.getElementById('winnerRoleName').innerText = ganador.rol ? ganador.rol.nombre : 'Criminal';
+            document.getElementById('winnerCapital').innerText = `$${ganador.capital.toLocaleString()}`;
+
+            if (ganador.rol) {
+                document.getElementById('winnerRoleIcon').innerHTML = `<i class="fa-solid ${ganador.rol.icono}"></i>`;
+                document.getElementById('winnerRoleIcon').style.color = ganador.rol.color;
+            }
+
+            document.getElementById('modalWinner').classList.remove('hidden');
+        }
+
+        function reiniciarJuego() {
+            juegoIniciado = false;
+            jugadores.forEach(j => {
+                j.capital = 100000;
+                j.rol = null;
+                j.arruinado = false;
+            });
+
+            document.getElementById('modalWinner').classList.add('hidden');
+            document.getElementById('phaseText').innerText = 'Configuración de Jugadores';
+            document.getElementById('btnStartGame').classList.remove('hidden');
+
+            renderizarTarjetas();
+        }
+    </script>
+</body>
+</html>
